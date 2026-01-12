@@ -163,6 +163,7 @@ static Particle particles[MAX_POSSIBLE_PARTICLES];
 
 static int wallpaper_count = 0;
 static bool print_filename_only = false;
+static bool recursive_traversal = false;
 
 static atomic_int next_load_index = 0;
 static atomic_bool loader_running = true;
@@ -387,9 +388,14 @@ static void LoadWallpapers(const char *dir)
     struct dirent *entry;
     while ((entry = readdir(dp)) != NULL && wallpaper_count < g_max_wallpapers)
     {
-        if (entry->d_type != DT_REG)
+        bool is_dot_dir = (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0);
+        if (entry->d_type == DT_DIR && recursive_traversal && !is_dot_dir)
         {
-            continue;
+            char *fullpath;
+            if (asprintf(&fullpath, "%s/%s", dir, entry->d_name) == -1) continue;
+            LoadWallpapers(fullpath);
+        } else if (entry->d_type != DT_REG) {
+          continue;
         }
         const char *ext = strrchr(entry->d_name, '.');
         if (!ext || (strcasecmp(ext, ".jpg") != 0 && strcasecmp(ext, ".jpeg") != 0 && strcasecmp(ext, ".png") != 0))
@@ -516,6 +522,7 @@ void print_help()
     printf("OPTIONS:\n");
     printf("  --help              Show this help message and exit.\n");
     printf("  --filename          Print only the filename of the selected wallpaper to stdout.\n");
+    printf("  --recursive         Recursively traverse the input directory for wallpapers.\n");
     printf("  --width <pixels>    Set the initial window width.\n");
     printf("  --height <pixels>   Set the initial window height.\n");
     printf("  --startup-effect <effect>\n");
@@ -742,6 +749,10 @@ int main(int argc, char **argv)
         else if (strcmp(argv[i], "--filename") == 0)
         {
             print_filename_only = true;
+        }
+        else if (strcmp(argv[i], "--recursive") == 0)
+        {
+            recursive_traversal = true;
         }
         else if (strcmp(argv[i], "--width") == 0 && i + 1 < argc)
         {
