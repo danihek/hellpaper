@@ -4,7 +4,7 @@ CC = gcc
 SRC = hellpaper.c
 
 TARGET = hellpaper
-CFLAGS = -Wall -O2
+CFLAGS = -Wall -O3
 LIBS = -lraylib -lm #-lGL -lpthread -ldl -lrt
 
 PREFIX ?= /usr/local
