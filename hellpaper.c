@@ -513,49 +513,54 @@ void ParseConfigFile()
 
 void print_help()
 {
-    printf("Hellpaper - wallpaper picker for Linux.\n\n");
-    printf("USAGE:\n");
-    printf("  hellpaper [OPTIONS] [PATH]\n\n");
-    printf("ARGUMENTS:\n");
-    printf("  [PATH]              Optional path to the directory containing wallpapers.\n");
-    printf("                      Defaults to '~/Pictures/'.\n\n");
-    printf("OPTIONS:\n");
-    printf("  --help              Show this help message and exit.\n");
-    printf("  --filename          Print only the filename of the selected wallpaper to stdout.\n");
-    printf("  --recursive         Recursively traverse the input directory for wallpapers.\n");
-    printf("  --width <pixels>    Set the initial window width.\n");
-    printf("  --height <pixels>   Set the initial window height.\n");
-    printf("  --startup-effect <effect>\n");
-    printf("  --keypress-effect <effect>\n");
-    printf("  --exit-effect <effect>\n");
-    printf("                      Override the configured visual effects on certain events.\n");
-    printf("                      Available effects: none, glitch, blur, pixelate, shake, collapse, reveal\n\n");
-    printf("KEYBINDINGS:\n");
-    printf("  NAVIGATION:\n");
-    printf("    h, j, k, l / Arrows Move selection. Keys repeat when held.\n");
-    printf("    Mouse Wheel       Scroll through wallpapers.\n");
-    printf("    Ctrl + Mouse Wheel  Zoom thumbnail scaling.\n\n");
-    printf("  ACTIONS:\n");
-    printf("    Enter / LMB         Select the highlighted wallpaper and exit.\n");
-    printf("    L-Shift / RMB       Show a full-screen preview of the highlighted wallpaper.\n");
-    printf("    /                   Enter search mode. Type to filter wallpapers by name.\n");
-    printf("    ESC                 Closes Preview, then Search, then the App.\n\n");
-    printf("  VIEW MODES:\n");
-    printf("    1, 2, 3, 4          Switch between different layout modes:\n");
-    printf("                        1: Grid\n");
-    printf("                        2: Horizontal River\n");
-    printf("                        3: Vertical River\n");
-    printf("                        4: Wave\n\n");
-    printf("CONFIGURATION:\n");
-    printf("  Hellpaper can be fully customized by editing the configuration file located at:\n");
-    printf("  ~/.config/hellpaper/hellpaper.conf\n");
+    printf("Hellpaper - wallpaper picker for Linux.\n\n"
+           "USAGE:\n"
+           "  hellpaper [OPTIONS] [PATH]\n\n"
+           "ARGUMENTS:\n"
+           "  [PATH]                   Optional path to the directory containing wallpapers.\n"
+           "                           Defaults to '~/Pictures/'.\n\n"
+           "OPTIONS:\n"
+           "  --help                   Show this help message and exit.\n"
+           "  --filename               Print only the filename of the selected wallpaper to stdout.\n"
+           "  --recursive              Recursively traverse the input directory for wallpapers.\n"
+           "  --width <pixels>         Set the initial window width.\n"
+           "  --height <pixels>        Set the initial window height.\n"
+           "  --startup-effect <effect>\n"
+           "  --keypress-effect <effect>\n"
+           "  --exit-effect <effect>\n"
+           "                           Override the configured visual effects on certain events.\n"
+           "                           Available effects: none, glitch, blur, pixelate, shake, collapse, reveal\n\n"
+           "KEYBINDINGS:\n"
+           "  NAVIGATION:\n"
+           "    h, j, k, l / Arrows    Move selection. Keys repeat when held.\n"
+           "    q                      Quit application.\n"
+           "    Mouse Wheel            Scroll through wallpapers.\n"
+           "    Ctrl + Mouse Wheel     Zoom thumbnail scaling.\n\n"
+           "  ACTIONS:\n"
+           "    Enter / LMB            Select the highlighted wallpaper and exit.\n"
+           "    L-Shift / RMB          Toggle a full-screen preview of the highlighted wallpaper.\n"
+           "    /                      Enter search mode. Type to filter wallpapers by name.\n"
+           "    ESC                    Closes Preview, then Search, then the App.\n\n"
+           "  VIEW MODES:\n"
+           "    1, 2, 3, 4             Switch between different layout modes:\n"
+           "                           1: Grid\n"
+           "                           2: Horizontal River\n"
+           "                           3: Vertical River\n"
+           "                           4: Wave\n\n"
+           "CONFIGURATION:\n"
+           "  Hellpaper can be fully customized by editing the configuration file located at:\n"
+           "  ~/.config/hellpaper/hellpaper.conf\n");
 }
 
 void UpdateAndDrawScene(int filteredCount, int* filteredIndices, float delta, bool isPreviewing, bool isSearching)
 {
     int sw = GetScreenWidth();
     int sh = GetScreenHeight();
-    Vector2 mouse = GetMousePosition();
+
+    Vector2 mouse_raw = GetMousePosition();
+    float scaleX = (float)GetRenderWidth()  / (float)GetScreenWidth();
+    float scaleY = (float)GetRenderHeight() / (float)GetScreenHeight();
+    Vector2 mouse = (Vector2){ mouse_raw.x * scaleX, mouse_raw.y * scaleY };
 
     if (g_modeTransitionTimer > 0)
     {
@@ -774,7 +779,7 @@ int main(int argc, char **argv)
         wallpaper_path = default_path;
     }
     LoadWallpapers(wallpaper_path);
-
+    SetConfigFlags(FLAG_WINDOW_HIGHDPI);
     InitWindow(g_win_width, g_win_height, "Hellpaper");
     SetExitKey(KEY_NULL);
     SetTargetFPS(g_max_fps);
@@ -805,7 +810,7 @@ int main(int argc, char **argv)
     TriggerEffect(g_startupEffect, 1.0f);
     
     float keyRepeatTimer = 0.0f;
-    const float KEY_REPEAT_DELAY = 0.1f;
+    const float KEY_REPEAT_DELAY = 0.15f;
 
     while (!WindowShouldClose())
     {
@@ -892,14 +897,22 @@ int main(int argc, char **argv)
         if (!blockActions)
         {
             int key = GetKeyPressed();
-            if (key != 0 && !isSearching)
+
+            // Process exit keycodes first
+            if ((key == KEY_Q || key == KEY_ESCAPE))
             {
-                TriggerEffect(g_keypressEffect, 0.4f);
+              break;
             }
+
             if (key >= KEY_ONE && key < KEY_ONE + NUM_MODES)
             {
                 g_targetMode = key - KEY_ONE;
                 g_modeTransitionTimer = g_modeTransitionDuration;
+            }
+
+            if (!isSearching)
+            {
+                TriggerEffect(g_keypressEffect, 0.4f);
             }
         }
 
@@ -920,7 +933,13 @@ int main(int argc, char **argv)
         }
         else
         {
-            if (!blockActions && IsKeyPressed(KEY_SLASH)) { isSearching = true; searchBufferCount = 0; searchBuffer[0] = '\0'; }
+            if (!blockActions && IsKeyPressed(KEY_SLASH))
+            {
+              isSearching = true;
+              g_hoveredIndex = -1;
+              searchBufferCount = 0;
+              memset(searchBuffer, 0, 256);
+            }
         }
 
 
@@ -1023,7 +1042,7 @@ int main(int argc, char **argv)
             }
         }
 
-        if (isPreviewing && (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || IsKeyPressed(KEY_ESCAPE) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)))
+        if (isPreviewing && (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_LEFT_SHIFT) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)))
         {
             if(IsKeyPressed(KEY_ESCAPE)) ateEscKey = true;
             if (atomic_load(&isFullTextureReady)) UnloadTexture(fullPreviewTexture);
