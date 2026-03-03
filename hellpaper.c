@@ -962,13 +962,15 @@ int main(int argc, char **argv)
                     Rectangle itemRect = {wallpapers[g_hoveredIndex].animPos.x, wallpapers[g_hoveredIndex].animPos.y, wallpapers[g_hoveredIndex].animSize.x, wallpapers[g_hoveredIndex].animSize.y};
                     if (g_currentMode == MODE_GRID || g_currentMode == MODE_RIVER_V)
                     {
-                        if (itemRect.y < g_smoothScrollY) g_scroll.y = itemRect.y - g_base_padding;
-                        if (itemRect.y + itemRect.height > g_smoothScrollY + sh) g_scroll.y = itemRect.y + itemRect.height - sh + g_base_padding;
+                        /* itemRect is in screen space (pos = world - scroll); convert to scroll target using world Y */
+                        if (itemRect.y < g_base_padding) g_scroll.y = itemRect.y + g_smoothScrollY - g_base_padding;
+                        if (itemRect.y + itemRect.height > sh - g_base_padding) g_scroll.y = itemRect.y + g_smoothScrollY + itemRect.height - sh + g_base_padding;
                     }
                     else
                     {
-                        if (itemRect.x < g_smoothScrollX) g_scroll.x = itemRect.x - g_base_padding;
-                        if (itemRect.x + itemRect.width > g_smoothScrollX + sw) g_scroll.x = itemRect.x + itemRect.width - sw + g_base_padding;
+                        /* itemRect is in screen space (pos = world - scroll); convert to scroll target using world X */
+                        if (itemRect.x < g_base_padding) g_scroll.x = itemRect.x + g_smoothScrollX - g_base_padding;
+                        if (itemRect.x + itemRect.width > sw - g_base_padding) g_scroll.x = itemRect.x + g_smoothScrollX + itemRect.width - sw + g_base_padding;
                     }
                 }
             }
