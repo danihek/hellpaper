@@ -1,12 +1,15 @@
 # Hellpaper
 
 <p align="center">
-    <img
-      src="https://github.com/user-attachments/assets/29eb2060-3b3b-4bd1-b871-034a5493cec5"
-      alt="Preview of Hellpaper"
-      width="500"
-    >
- <p align="center">A wallpaper picker for Linux, built with Raylib.</p>
+  <video
+    src="hellpaper_demo.mp4"
+    alt="Preview of Hellpaper"
+    width="500"
+    autoplay
+    loop
+    muted
+  ></video>
+  <p align="center">A wallpaper picker, built with Raylib.</p>
 </p>
 
 ## "Features"
