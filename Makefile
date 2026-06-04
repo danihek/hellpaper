@@ -5,7 +5,18 @@ SRC = hellpaper.c
 
 TARGET = hellpaper
 CFLAGS = -Wall -O2
-LIBS = -lraylib -lm #-lGL -lpthread -ldl -lrt
+
+#- mac os need some different flags for raylib 
+#- see https://github.com/raysan5/raylib/wiki/Working-on-macOS#:~:text=If-,the,-build%20fails%2C%20you
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S), Darwin)
+    CFLAGS += -I$(shell brew --prefix raylib)/include
+    LIBS = -lraylib -lm -L$(shell brew --prefix raylib)/lib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
+else
+    LIBS = -lraylib -lm #-lGL -lpthread -ldl -lrt
+endif
+
 
 PREFIX ?= /usr/local
 BINDIR = $(PREFIX)/bin

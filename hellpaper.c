@@ -19,7 +19,14 @@
 #include <math.h>
 #include <pthread.h>
 #include <stdatomic.h>
+/*
+ * sysinfo can only be used on linux and in this code here uses it only at 
+ * one location. sysconf is actually from <unistd.h> which is 
+ * already included
+ * */
+#ifdef __linux__
 #include <sys/sysinfo.h>
+#endif
 #include <ctype.h>
 #include <stdarg.h>
 
