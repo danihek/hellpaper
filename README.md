@@ -20,6 +20,7 @@
 ## Dependencies
 
 *   **raylib**
+*   **libjpeg** (provided by `libjpeg-turbo` on Arch Linux), for JPEG thumbnails and previews even when raylib is built without JPEG support.
 
 ## Building
 

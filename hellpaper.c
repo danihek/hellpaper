@@ -22,6 +22,69 @@
 #include <sys/sysinfo.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <jpeglib.h>
+#include <setjmp.h>
+#include <limits.h>
+
+typedef struct {
+    struct jpeg_decompress_struct decoder;
+    struct jpeg_error_mgr error;
+    jmp_buf jump;
+    FILE *file;
+    unsigned char *pixels;
+} JpegLoader;
+
+static void JpegLoadError(j_common_ptr decoder)
+{
+    JpegLoader *loader = (JpegLoader *)decoder;
+    longjmp(loader->jump, 1);
+}
+
+// Decode JPEGs independently of raylib's optional JPEG build support.
+static Image LoadWallpaperImage(const char *path)
+{
+    const char *ext = strrchr(path, '.');
+    if (!ext || (strcasecmp(ext, ".jpg") && strcasecmp(ext, ".jpeg")))
+        return LoadImage(path);
+
+    Image image = {0};
+    JpegLoader *loader = calloc(1, sizeof(*loader));
+    if (!loader) return image;
+    loader->file = fopen(path, "rb");
+    if (!loader->file) { free(loader); return image; }
+    loader->decoder.err = jpeg_std_error(&loader->error);
+    loader->error.error_exit = JpegLoadError;
+
+    // Keep cleanup state on the heap so it survives a decoder longjmp.
+    if (setjmp(loader->jump)) goto cleanup;
+    jpeg_create_decompress(&loader->decoder);
+    jpeg_stdio_src(&loader->decoder, loader->file);
+    jpeg_read_header(&loader->decoder, TRUE);
+    loader->decoder.out_color_space = JCS_RGB;
+    jpeg_start_decompress(&loader->decoder);
+    size_t stride = (size_t)loader->decoder.output_width * 3;
+    if (!stride || !loader->decoder.output_height ||
+        loader->decoder.output_width > INT_MAX || loader->decoder.output_height > INT_MAX ||
+        stride > UINT_MAX / loader->decoder.output_height) goto cleanup;
+    loader->pixels = MemAlloc((unsigned int)(stride * loader->decoder.output_height));
+    if (!loader->pixels) goto cleanup;
+    while (loader->decoder.output_scanline < loader->decoder.output_height)
+    {
+        JSAMPROW row = loader->pixels + (size_t)loader->decoder.output_scanline * stride;
+        if (jpeg_read_scanlines(&loader->decoder, &row, 1) != 1) goto cleanup;
+    }
+    jpeg_finish_decompress(&loader->decoder);
+    image = (Image){loader->pixels, (int)loader->decoder.output_width,
+        (int)loader->decoder.output_height, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8};
+    loader->pixels = NULL;
+
+cleanup:
+    jpeg_destroy_decompress(&loader->decoder);
+    if (loader->pixels) MemFree(loader->pixels);
+    fclose(loader->file);
+    free(loader);
+    return image;
+}
 
 const char *postProcessingFs =
     "#version 330 core\n"
@@ -297,7 +360,7 @@ void TriggerParticleBurst(Vector2 pos)
 
 static Image LoadThumbnailImage(const char *fp)
 {
-    Image i = LoadImage(fp);
+    Image i = LoadWallpaperImage(fp);
     if (i.data)
     {
         int cs = (i.width < i.height) ? i.width : i.height;
@@ -319,7 +382,7 @@ static Image LoadThumbnailImage(const char *fp)
 
 void *FullPreviewLoaderThread(void* p)
 {
-    Image i = LoadImage((const char*)p);
+    Image i = LoadWallpaperImage((const char*)p);
     if (i.data)
     {
         pendingFullImage = i;
@@ -392,7 +455,7 @@ static void LoadWallpapers(const char *dir)
             continue;
         }
         const char *ext = strrchr(entry->d_name, '.');
-        if (!ext || (strcasecmp(ext, ".jpg") != 0 && strcasecmp(ext, ".jpeg") != 0 && strcasecmp(ext, ".png") != 0))
+        if (!ext || (strcasecmp(ext, ".jpg") != 0 && strcasecmp(ext, ".jpeg") != 0 && strcasecmp(ext, ".png") != 0 && strcasecmp(ext, ".gif") != 0))
         {
             continue;
         }

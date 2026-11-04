@@ -5,7 +5,7 @@ SRC = hellpaper.c
 
 TARGET = hellpaper
 CFLAGS = -Wall -O2
-LIBS = -lraylib -lm #-lGL -lpthread -ldl -lrt
+LIBS = -lraylib -ljpeg -lm #-lGL -lpthread -ldl -lrt
 
 PREFIX ?= /usr/local
 BINDIR = $(PREFIX)/bin
